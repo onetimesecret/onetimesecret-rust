@@ -136,7 +136,8 @@ impl Client {
                     attempt += 1;
                     std::thread::sleep(Config::backoff(attempt, retry_after));
                 }
-                _ => return outcome.map_err(crate::Error::from),
+                // Without the URL: a request path can name a secret.
+                _ => return outcome.map_err(|e| crate::Error::Transport(e.without_url())),
             }
         }
     }

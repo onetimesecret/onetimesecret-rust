@@ -522,7 +522,8 @@ impl Client {
                     attempt += 1;
                     tokio::time::sleep(Config::backoff(attempt, retry_after)).await;
                 }
-                _ => return outcome.map_err(Error::from),
+                // Without the URL: a request path can name a secret.
+                _ => return outcome.map_err(|e| Error::Transport(e.without_url())),
             }
         }
     }

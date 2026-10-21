@@ -437,6 +437,9 @@ async fn transport_failures_are_distinguishable() {
     let err = client.system().status().await.unwrap_err();
     assert!(matches!(err, Error::Transport(_)), "{err:?}");
     assert!(err.as_api().is_none());
+    // The request path can name a secret; transport errors do not repeat it.
+    let text = format!("{err} / {err:?}");
+    assert!(!text.contains("/api/v2/status"), "{text}");
 }
 
 #[tokio::test]
