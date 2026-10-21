@@ -30,6 +30,13 @@ recent `0.x` line.
   server on the same machine.
 - Redirects are never followed, so credentials cannot be sent to a host
   other than the configured base URL.
+- A base URL with a username or password in it is refused; credentials
+  travel only as HTTP Basic auth from `Credentials`, and never into the
+  share links the SDK builds.
+- Identifiers are percent-encoded into a single path segment, so a value
+  that is not an identifier cannot redirect a request within the server.
+- Transport errors (`Error::Transport`) omit the request URL, which can
+  name a secret. The base URL is available from `Client::base_url`.
 - Server error messages are surfaced as-is in `ApiError::message`. The
   server does not echo secrets, but treat logs of these messages as you
   would any API log.
