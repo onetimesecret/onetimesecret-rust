@@ -41,8 +41,8 @@ jobs:
           toolchain: stable
           components: clippy
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo clippy --all-features --all-targets -- -D warnings
-      - run: cargo clippy --no-default-features --features native-tls --all-targets -- -D warnings
+      - run: cargo clippy --locked --all-features --all-targets -- -D warnings
+      - run: cargo clippy --locked --no-default-features --features native-tls --all-targets -- -D warnings
 
   test:
     name: test (${{ matrix.os }}, ${{ matrix.rust }})
@@ -61,9 +61,9 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo test --all-features
-      - run: cargo test --no-default-features --features native-tls
-      - run: cargo test --no-default-features --features rustls,blocking
+      - run: cargo test --locked --all-features
+      - run: cargo test --locked --no-default-features --features native-tls
+      - run: cargo test --locked --no-default-features --features rustls,blocking
 
   msrv:
     name: MSRV (lib)
@@ -76,8 +76,8 @@ jobs:
         with:
           toolchain: "1.85"
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo check --lib --all-features
-      - run: cargo check --lib --no-default-features --features native-tls
+      - run: cargo check --locked --lib --all-features
+      - run: cargo check --locked --lib --no-default-features --features native-tls
 
   docs:
     name: rustdoc
@@ -90,7 +90,7 @@ jobs:
         with:
           toolchain: nightly
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo doc --all-features --no-deps
+      - run: cargo doc --locked --all-features --no-deps
 
   deny:
     name: cargo-deny
