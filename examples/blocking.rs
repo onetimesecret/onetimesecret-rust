@@ -1,17 +1,29 @@
 //! The same conceal flow without an async runtime.
 //!
 //! ```sh
-//! cargo run --example blocking --features blocking
+//! export ONETIME_BASE_URL=https://eu.onetimesecret.com
+//! export ONETIME_CUSTOMER_EXTID=ur...      # optional: omit both for anonymous use
+//! export ONETIME_API_TOKEN=...
+//! cargo run --example blocking --features blocking -- "the launch codes"
 //! ```
 
+use std::time::Duration;
+
+use onetimesecret::ConcealSecret;
 use onetimesecret::blocking::Client;
-use onetimesecret::{ConcealSecret, Region};
 
 fn main() -> Result<(), onetimesecret::Error> {
-    let client = Client::builder().region(Region::Eu).build()?;
+    let value = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "hello from the blocking client".to_owned());
+
+    let client = Client::from_env()?;
     let created = client
         .secrets()
-        .conceal(ConcealSecret::new("hello from the blocking client"))?;
-    println!("{}", created.share_url);
+        .conceal(ConcealSecret::new(value).ttl(Duration::from_secs(3600)))?;
+
+    println!("share link : {}", created.share_url);
+    println!("receipt id : {}", created.receipt.identifier);
+    println!("expires in : {:?}", created.receipt.secret_ttl);
     Ok(())
 }
