@@ -1,7 +1,7 @@
 name: Release
 
 # Tag-driven release, the pattern used across the Onetime Secret SDKs
-# (onetime-ruby, onetimesecret-py, onetime-js):
+# (onetimesecret-ruby, onetimesecret-py, onetimesecret-js):
 #
 #   git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
 #

@@ -21,7 +21,7 @@ timestamp}`, and `{error, error_type, field, request_id}`.
 - `ApiError` keeps every field the server has been seen to send, all
   optional except `status` and `message`, plus the decoded `body`.
 - `kind: ApiErrorKind` is the classification every official SDK uses,
-  taken from `onetime-ruby`'s exception hierarchy: the server's
+  taken from `onetimesecret-ruby`'s exception hierarchy: the server's
   `error_type` when known (`FormError`, `RequiresAccount`,
   `RecordNotFound`, `GuestRoutesDisabled`, `EntitlementRequired`,
   `LimitExceeded`, `ServerError`), else the status. The account

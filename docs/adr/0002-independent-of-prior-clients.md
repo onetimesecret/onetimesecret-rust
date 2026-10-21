@@ -4,7 +4,7 @@ Status: accepted, 2026-10-20
 
 ## Context
 
-Two clients already exist: `onetime-ruby`, the Ruby SDK, and `ots-client`,
+Two clients already exist: `onetimesecret-ruby`, the Ruby SDK, and `ots-client`,
 a small sans-IO crate inside the macOS companion app (`onetimesecret/macos`,
 `crates/ots-client` and `crates/transport`). The macOS crate is good code
 for its purpose: synchronous, conceal-only, no runtime, every byte of the

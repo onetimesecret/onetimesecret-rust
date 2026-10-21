@@ -2,7 +2,7 @@
 
 How this SDK is set up for publishing and how a release is cut. The
 workflow has the same shape across the Onetime Secret SDKs
-(`onetime-ruby`, `onetimesecret-py`, `onetime-js`): the version lives in
+(`onetimesecret-ruby`, `onetimesecret-py`, `onetimesecret-js`): the version lives in
 the repository, pushing a `vX.Y.Z` tag publishes it, CI verifies the tag
 matches the package version, the registry trusts the workflow through OIDC
 rather than a stored token, and a GitHub Release is created from the
@@ -22,7 +22,7 @@ file.
 | Documentation | <https://docs.rs/onetimesecret>, built by docs.rs on publish |
 
 Repository and crate names do not need to match; the Ruby SDK follows the
-same pattern (`onetime-ruby` / `onetimesecret`). `onetime` and `ots` on
+same pattern (`onetimesecret-ruby` / `onetimesecret`). `onetime` and `ots` on
 crates.io belong to unrelated crates.
 
 ## Where the version lives

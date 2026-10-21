@@ -5,7 +5,7 @@ Status: accepted, 2026-10-21
 ## Context
 
 Onetime Secret maintains official SDKs in several languages, with
-`onetime-ruby` as the reference. ADR 0002 says this crate is designed from
+`onetimesecret-ruby` as the reference. ADR 0002 says this crate is designed from
 the API, not from the other clients' code. That leaves a question: which
 behaviours are product conventions that every SDK should share, and which
 are implementation details each language decides for itself?
@@ -17,7 +17,7 @@ different from the family.
 ## Decision
 
 Behaviour that a user or operator would notice across SDKs follows
-`onetime-ruby`, and changes there first or in step:
+`onetimesecret-ruby`, and changes there first or in step:
 
 - Environment variables: `ONETIME_BASE_URL`, `ONETIME_CUSTOMER_EXTID`,
   `ONETIME_API_TOKEN`.

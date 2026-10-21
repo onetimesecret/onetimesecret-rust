@@ -65,7 +65,7 @@ Some rules of thumb that fall out of them:
   `tests/fixtures/README.md`.
 - Behaviour the SDK family shares (error classification, credential
   checks, retry policy, environment variables, client headers) follows
-  `onetime-ruby`, the reference implementation. Change it there first, or
+  `onetimesecret-ruby`, the reference implementation. Change it there first, or
   at least in step.
 
 ## Reporting security issues
