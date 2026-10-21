@@ -80,8 +80,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert!(!receipt.is_pending());
 
     let after = client.secrets().status(&secret_id).await?;
-    println!("secret     : known={}", after.is_known());
+    println!(
+        "secret     : known={}, state={:?}",
+        after.is_known(),
+        after.state()
+    );
     assert!(!after.is_known(), "a revealed secret should be gone");
+    assert_eq!(after.state(), None);
 
     let again = client.secrets().reveal(&secret_id).await;
     println!(

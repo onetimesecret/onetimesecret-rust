@@ -67,6 +67,22 @@ impl SecretStatus {
     pub fn is_known(&self) -> bool {
         self.secret.is_some()
     }
+
+    /// The secret's state, while the server still holds it. `None` once
+    /// it is gone: the server does not say whether it was revealed,
+    /// burned or expired, so there is no state to report.
+    ///
+    /// ```
+    /// # use onetimesecret::{SecretState, SecretStatus};
+    /// # fn check(status: &SecretStatus) {
+    /// if status.state() == Some(&SecretState::New) {
+    ///     println!("nobody has looked at it yet");
+    /// }
+    /// # }
+    /// ```
+    pub fn state(&self) -> Option<&SecretState> {
+        self.secret.as_ref().map(|s| &s.state)
+    }
 }
 
 /// The outcome of a reveal: the value, and the secret as it was.
