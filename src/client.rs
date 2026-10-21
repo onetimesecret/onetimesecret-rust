@@ -428,6 +428,14 @@ pub(crate) fn parse_base_url(raw: &str, https_only: bool) -> Result<Url> {
             "base URL {raw:?} must not have a query or fragment"
         )));
     }
+    // Not echoed: it would print the password.
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(Error::Config(
+            "base URL must not carry a username or password; pass the API token with \
+             Credentials instead"
+                .into(),
+        ));
+    }
     if !url.path().ends_with('/') {
         let path = format!("{}/", url.path());
         url.set_path(&path);
@@ -599,6 +607,15 @@ mod tests {
         assert!(parse_base_url("http://localhost:3000", false).is_ok());
         assert!(parse_base_url("ftp://x.example", false).is_err());
         assert!(parse_base_url("https://x.example/?a=1", true).is_err());
+    }
+
+    #[test]
+    fn userinfo_in_the_base_url_is_refused_and_not_echoed() {
+        let err = parse_base_url("https://ur1abc:hunter2@eu.onetimesecret.com", true).unwrap_err();
+        let text = err.to_string();
+        assert!(text.contains("username or password"), "{text}");
+        assert!(!text.contains("hunter2"), "{text}");
+        assert!(parse_base_url("https://ur1abc@eu.onetimesecret.com", true).is_err());
     }
 
     #[test]
