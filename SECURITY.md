@@ -26,8 +26,10 @@ recent `0.x` line.
   zeroized when dropped. Request bodies are built in a buffer that is
   zeroized after the request. Copies the HTTP stack makes while sending
   are outside the SDK's control.
-- TLS is required unless `allow_http(true)` is called, which is meant for a
-  server on the same machine.
+- TLS is required, with one exception: a plain `http://` base URL naming
+  a loopback host (`localhost`, `127.0.0.1`, `::1`) is accepted, since that
+  traffic never leaves the machine. Any other `http://` host needs
+  `allow_http(true)`.
 - Redirects are never followed, so credentials cannot be sent to a host
   other than the configured base URL.
 - A base URL with a username or password in it is refused; credentials

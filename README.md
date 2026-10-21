@@ -132,7 +132,7 @@ the server's `error_type` when it sends one.
 | Hosted region | `.region(Region::Us)` (also `Eu`, `Ca`, `Uk`, `Nz`) |
 | Self-hosted | `.base_url("https://secrets.example.com")`, path prefixes kept |
 | Custom domain | `.base_url("https://your.domain")`, or `.share_domain(…)` per request |
-| Local development | `.base_url("http://localhost:3000").allow_http(true)` |
+| Local development | `.base_url("http://localhost:3000")`; plain http needs `.allow_http(true)` for any host but this machine |
 
 `https://onetimesecret.com` itself is the website, not an API host; the
 builder refuses it.

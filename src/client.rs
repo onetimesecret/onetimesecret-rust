@@ -305,9 +305,10 @@ impl ClientBuilder {
         self
     }
 
-    /// Allow a plain `http://` base URL. Only for local development
-    /// against a server on the same machine: credentials and secrets
-    /// travel in the clear.
+    /// Allow a plain `http://` base URL to a host other than this machine.
+    /// Credentials and secrets then travel in the clear, so this is for
+    /// development networks only. Loopback hosts (`localhost`,
+    /// `127.0.0.1`, `::1`) are always allowed.
     pub fn allow_http(mut self, allow: bool) -> Self {
         self.https_only = !allow;
         self
@@ -332,6 +333,9 @@ impl ClientBuilder {
             ))
         })?;
         let base_url = parse_base_url(&raw, self.https_only)?;
+        // Every request URL derives from the base URL, which has just been
+        // judged; let the HTTP client enforce the same verdict.
+        let https_only = base_url.scheme() == "https";
         if let Some(credentials) = &self.credentials {
             credentials.validate()?;
         }
@@ -348,7 +352,7 @@ impl ClientBuilder {
             user_agent,
             timeout: self.timeout,
             connect_timeout: self.connect_timeout,
-            https_only: self.https_only,
+            https_only,
             max_retries: self.max_retries,
         })
     }
@@ -401,10 +405,11 @@ pub(crate) fn parse_base_url(raw: &str, https_only: bool) -> Result<Url> {
         Url::parse(raw).map_err(|e| Error::Config(format!("invalid base URL {raw:?}: {e}")))?;
     match url.scheme() {
         "https" => {}
-        "http" if !https_only => {}
+        "http" if !https_only || is_loopback(&url) => {}
         "http" => {
             return Err(Error::Config(format!(
-                "base URL {raw:?} is not https; call allow_http(true) for local development only"
+                "base URL {raw:?} is not https; plain http is only allowed to a server on \
+                 this machine (localhost, 127.0.0.1, ::1) unless allow_http(true) is called"
             )));
         }
         other => {
@@ -441,6 +446,20 @@ pub(crate) fn parse_base_url(raw: &str, https_only: bool) -> Result<Url> {
         url.set_path(&path);
     }
     Ok(url)
+}
+
+/// `localhost`, `*.localhost`, `127.0.0.0/8` and `::1`: traffic that never
+/// leaves the machine, so plain http is acceptable without opting in.
+fn is_loopback(url: &Url) -> bool {
+    match url.host() {
+        Some(url::Host::Domain(domain)) => {
+            let domain = domain.to_ascii_lowercase();
+            domain == "localhost" || domain.ends_with(".localhost")
+        }
+        Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+        Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+        None => false,
+    }
 }
 
 struct Inner {
@@ -602,11 +621,28 @@ mod tests {
     }
 
     #[test]
-    fn http_needs_opting_in() {
-        assert!(parse_base_url("http://localhost:3000", true).is_err());
-        assert!(parse_base_url("http://localhost:3000", false).is_ok());
+    fn plain_http_is_allowed_to_loopback_and_needs_opting_in_elsewhere() {
+        assert!(parse_base_url("http://localhost:3000", true).is_ok());
+        assert!(parse_base_url("http://app.LocalHost:3000", true).is_ok());
+        assert!(parse_base_url("http://127.0.0.1:7143", true).is_ok());
+        assert!(parse_base_url("http://[::1]:3000", true).is_ok());
+        let err = parse_base_url("http://ots.internal:3000", true).unwrap_err();
+        assert!(err.to_string().contains("allow_http"), "{err}");
+        assert!(parse_base_url("http://ots.internal:3000", false).is_ok());
+        assert!(parse_base_url("http://10.0.0.5", true).is_err());
         assert!(parse_base_url("ftp://x.example", false).is_err());
         assert!(parse_base_url("https://x.example/?a=1", true).is_err());
+    }
+
+    #[test]
+    fn the_http_client_enforces_https_exactly_when_the_base_url_is_https() {
+        let config = ClientBuilder::new().region(Region::Eu).config().unwrap();
+        assert!(config.https_only);
+        let config = ClientBuilder::new()
+            .base_url("http://127.0.0.1:7143")
+            .config()
+            .unwrap();
+        assert!(!config.https_only);
     }
 
     #[test]
