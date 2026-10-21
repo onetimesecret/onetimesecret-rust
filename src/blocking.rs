@@ -25,7 +25,7 @@ use zeroize::Zeroizing;
 
 use crate::api::endpoints::{self, Context, Endpoint};
 use crate::client::{
-    CLIENT_HEADER, ClientBuilder, Config, client_header, retryable_status,
+    CLIENT_HEADER, ClientBuilder, Config, client_header, http_client_setup_error, retryable_status,
     retryable_transport_error,
 };
 use crate::error::Result;
@@ -45,7 +45,8 @@ impl ClientBuilder {
             .connect_timeout(config.connect_timeout)
             .https_only(config.https_only)
             .redirect(reqwest::redirect::Policy::none())
-            .build()?;
+            .build()
+            .map_err(|e| http_client_setup_error(&e))?;
         Ok(Client {
             inner: Arc::new(Inner { config, http }),
         })

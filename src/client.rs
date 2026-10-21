@@ -370,11 +370,18 @@ impl ClientBuilder {
             .connect_timeout(config.connect_timeout)
             .https_only(config.https_only)
             .redirect(reqwest::redirect::Policy::none())
-            .build()?;
+            .build()
+            .map_err(|e| http_client_setup_error(&e))?;
         Ok(Client {
             inner: Arc::new(Inner { config, http }),
         })
     }
+}
+
+/// A client that could not be built never sent a request, so this is a
+/// configuration problem (usually the TLS backend), not a transport one.
+pub(crate) fn http_client_setup_error(error: &reqwest::Error) -> Error {
+    Error::Config(format!("could not set up the HTTP client: {error}"))
 }
 
 /// Names the SDK repository, not the crate: `onetimesecret-rust` tells the
