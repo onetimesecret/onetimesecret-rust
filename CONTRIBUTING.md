@@ -33,9 +33,10 @@ CI runs these plus an MSRV check, `cargo-deny`, and `cargo-semver-checks`.
 
 ## Commits and pull requests
 
-Pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/)
-(`feat:`, `fix:`, `docs:`, `chore:`; `feat!:` for a breaking change).
-Squash-merge is the norm, so the title is what lands on `main`.
+Commit messages and pull request titles use an imperative subject line
+under 72 characters, with a body explaining *why* when it is not obvious.
+No type prefixes. Squash-merge is the norm, so the PR title is what lands
+on `main`; say "breaking" in the title or body when the public API changes.
 
 Anything a user would notice gets a line under `## [Unreleased]` in
 `CHANGELOG.md`, in the same pull request, under `Added`, `Changed`,
