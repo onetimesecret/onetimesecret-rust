@@ -6,5 +6,5 @@ This project follows the
 In short: be respectful, assume good faith, keep disagreements about the
 work. Harassment of any kind is not tolerated.
 
-Report concerns to conduct@onetimesecret.com. Reports are handled in
+Report concerns to support@onetimesecret.com. Reports are handled in
 confidence by the maintainers.
