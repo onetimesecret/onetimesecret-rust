@@ -7,7 +7,8 @@
 use std::time::{Duration, Instant};
 
 use onetimesecret::blocking::Client;
-use onetimesecret::{ConcealSecret, Credentials};
+use onetimesecret::secrecy::ExposeSecret;
+use onetimesecret::{ConcealSecret, Credentials, GenerateSecret};
 use tokio::runtime::Runtime;
 use wiremock::matchers::{basic_auth, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -77,6 +78,42 @@ fn blocking_client_round_trips() {
         .unwrap();
     assert!(created.share_url.path().starts_with("/secret/"));
     assert_eq!(created.receipt.shortid, "5e60wem0");
+    drop(server);
+}
+
+#[test]
+fn generate_claims_the_value() {
+    const GENERATED_RECEIPT: &str =
+        "ig61b2jx147uvq5mrlauro5spzjylog4iy2nvij08c90rxph8b9mjnvgqdfb9h";
+    let runtime = Runtime::new().unwrap();
+    let server = server(&runtime);
+    mount(
+        &runtime,
+        &server,
+        Mock::given(method("POST"))
+            .and(path("/api/v2/guest/secret/generate"))
+            .respond_with(respond(200, "v2_generate_200.json"))
+            .expect(1),
+    );
+    mount(
+        &runtime,
+        &server,
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v2/guest/receipt/{GENERATED_RECEIPT}")))
+            .respond_with(respond(200, "v2_receipt_show_generated_200.json"))
+            .expect(1),
+    );
+
+    let generated = anonymous(&server)
+        .secrets()
+        .generate(GenerateSecret::new())
+        .unwrap();
+    assert_eq!(
+        generated.value.as_ref().unwrap().expose_secret(),
+        "XQ+'Y*9{'$ed"
+    );
+    assert!(generated.claim_error.is_none());
+    assert!(generated.receipt.secret_value.is_none());
     drop(server);
 }
 

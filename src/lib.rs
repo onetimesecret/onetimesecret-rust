@@ -78,9 +78,9 @@ pub use client::{
 };
 pub use error::{ApiError, ApiErrorKind, Error, Result};
 pub use types::{
-    CharacterSets, ConcealSecret, CreatedSecret, GenerateSecret, ParseIdError, Receipt, ReceiptId,
-    ReceiptState, RevealedSecret, SecretId, SecretKind, SecretMetadata, SecretState, SecretStatus,
-    SupportedLocales, SystemStatus, SystemVersion,
+    CharacterSets, ConcealSecret, CreatedSecret, GenerateSecret, GeneratedSecret, ParseIdError,
+    Receipt, ReceiptId, ReceiptState, RevealedSecret, SecretId, SecretKind, SecretMetadata,
+    SecretState, SecretStatus, SupportedLocales, SystemStatus, SystemVersion,
 };
 
 /// The crate version, sent in the `User-Agent` header.

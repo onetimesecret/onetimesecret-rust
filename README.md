@@ -64,6 +64,25 @@ let revealed = client.secrets().reveal("https://eu.onetimesecret.com/secret/…"
 println!("{}", revealed.value.expose_secret());
 ```
 
+Generated secrets: the server never sends the value with the link. It
+discloses it once, on the first fetch of the receipt, so `generate` makes
+that fetch and hands the value back:
+
+```rust
+use onetimesecret::GenerateSecret;
+
+let generated = client.secrets().generate(GenerateSecret::new().length(24)).await?;
+println!("send this, once: {}", generated.share_url);
+match &generated.value {
+    Some(value) => println!("the value: {}", value.expose_secret()),
+    None => eprintln!("the link works, but the value was not claimed: {:?}", generated.claim_error),
+}
+```
+
+A failed claim does not fail `generate`; the secret exists and the link is
+valid. `GenerateSecret::claim_value(false)` skips the fetch, and the first
+`receipts().show(id)` then carries the value in `Receipt::secret_value`.
+
 Or let the environment configure it:
 
 ```sh

@@ -8,6 +8,7 @@ use url::Url;
 
 use super::wire::{flag, seconds, timestamp};
 use super::{Receipt, SecretId, SecretState};
+use crate::error::{Error, Result};
 
 /// Everything about a secret except its value.
 #[derive(Debug, Clone, Deserialize)]
@@ -110,6 +111,67 @@ pub struct CreatedSecret {
     pub share_domain: Option<String>,
     /// The link to hand to the recipient.
     pub share_url: Url,
+}
+
+/// The outcome of generating a secret: the link, and the value when the
+/// SDK could claim it.
+///
+/// The server discloses a generated value exactly once, on the first
+/// fetch of the receipt, so [`Secrets::generate`](crate::Secrets::generate)
+/// makes that fetch right after creation. The link is valid whether or
+/// not the claim succeeded.
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct GeneratedSecret {
+    /// The creator's receipt. When the value was claimed this is the
+    /// fetched receipt, which also carries the links and expiration;
+    /// otherwise it is the one returned at creation.
+    pub receipt: Receipt,
+    /// The secret, without its value.
+    pub secret: SecretMetadata,
+    /// The domain the link lives on; `None` for the server's own.
+    pub share_domain: Option<String>,
+    /// The link to hand to the recipient.
+    pub share_url: Url,
+    /// The generated value. `None` when the claim was turned off with
+    /// [`GenerateSecret::claim_value`](super::GenerateSecret::claim_value),
+    /// when it failed (see [`claim_error`](Self::claim_error)), or when the
+    /// server declined: the value goes to whichever receipt fetch comes
+    /// first, and only within a short window after creation.
+    pub value: Option<SecretString>,
+    /// Why the claim failed, if it did. The secret exists and the link
+    /// works regardless; only the value is missing.
+    pub claim_error: Option<Error>,
+}
+
+impl GeneratedSecret {
+    /// `true` when the value is in hand.
+    pub fn is_claimed(&self) -> bool {
+        self.value.is_some()
+    }
+
+    pub(crate) fn unclaimed(created: CreatedSecret) -> Self {
+        Self {
+            receipt: created.receipt,
+            secret: created.secret,
+            share_domain: created.share_domain,
+            share_url: created.share_url,
+            value: None,
+            claim_error: None,
+        }
+    }
+
+    pub(crate) fn claimed(created: CreatedSecret, fetched: Result<Receipt>) -> Self {
+        let mut generated = Self::unclaimed(created);
+        match fetched {
+            Ok(mut receipt) => {
+                generated.value = receipt.secret_value.take();
+                generated.receipt = receipt;
+            }
+            Err(error) => generated.claim_error = Some(error),
+        }
+        generated
+    }
 }
 
 // ---- wire records -------------------------------------------------------

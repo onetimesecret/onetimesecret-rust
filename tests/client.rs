@@ -43,6 +43,11 @@ fn authenticated(server: &MockServer) -> Client {
 
 const SECRET: &str = "lj85fzddjygwug0bwntphasz91a36hpjc4ut4xanu9oqn0drnh1ab7ify46ib9";
 const RECEIPT: &str = "5e60wem00rn4zj5a3itqbir40s70j4uzdb36u2k00qyz6h01fnt8keb8v05z6h";
+// From v2_generate_200.json; the receipt fixture served for it comes from
+// another capture, so its own identifiers differ.
+const GENERATED_SECRET: &str = "lhftjvj2i75j81fw8lmh49y13mvpurzosiceeto1e31wv53eb9rpcllh06dn85";
+const GENERATED_RECEIPT: &str = "ig61b2jx147uvq5mrlauro5spzjylog4iy2nvij08c90rxph8b9mjnvgqdfb9h";
+const GENERATED_VALUE: &str = "XQ+'Y*9{'$ed";
 
 #[tokio::test]
 async fn conceal_anonymously_uses_the_guest_route_and_builds_the_share_link() {
@@ -128,8 +133,16 @@ async fn credentials_go_out_as_basic_auth_on_the_regular_routes() {
         .expect(1)
         .mount(&server)
         .await;
+    // The claim goes out on the account route with the same credentials.
+    Mock::given(method("GET"))
+        .and(path(format!("/api/v2/receipt/{GENERATED_RECEIPT}")))
+        .and(basic_auth("ur1abc23def", "tok"))
+        .respond_with(respond(200, "v2_receipt_show_generated_200.json"))
+        .expect(1)
+        .mount(&server)
+        .await;
 
-    let created = authenticated(&server)
+    let generated = authenticated(&server)
         .secrets()
         .generate(
             GenerateSecret::new()
@@ -139,9 +152,111 @@ async fn credentials_go_out_as_basic_auth_on_the_regular_routes() {
         )
         .await
         .unwrap();
-    assert_eq!(created.receipt.kind, Some(SecretKind::Generate));
-    assert!(created.receipt.has_passphrase);
-    assert!(created.secret.has_passphrase);
+    assert_eq!(generated.receipt.kind, Some(SecretKind::Generate));
+    assert!(generated.secret.has_passphrase);
+    assert!(generated.is_claimed());
+}
+
+#[tokio::test]
+async fn generate_claims_the_value_from_the_receipts_first_fetch() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/v2/guest/secret/generate"))
+        .respond_with(respond(200, "v2_generate_200.json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(format!("/api/v2/guest/receipt/{GENERATED_RECEIPT}")))
+        .respond_with(respond(200, "v2_receipt_show_generated_200.json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let generated = anonymous(&server)
+        .secrets()
+        .generate(GenerateSecret::new())
+        .await
+        .unwrap();
+    assert_eq!(
+        generated.value.as_ref().unwrap().expose_secret(),
+        GENERATED_VALUE
+    );
+    assert!(generated.is_claimed());
+    assert!(generated.claim_error.is_none());
+    // The value lives in one place: not also on the receipt.
+    assert!(generated.receipt.secret_value.is_none());
+    // The fetched receipt replaces the creation one, so the links are there.
+    assert!(generated.receipt.share_url.is_some());
+    assert!(generated.share_url.path().starts_with("/secret/"));
+    // Redacted from Debug.
+    assert!(!format!("{generated:?}").contains(GENERATED_VALUE));
+}
+
+#[tokio::test]
+async fn a_failed_claim_still_returns_the_created_secret() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/v2/guest/secret/generate"))
+        .respond_with(respond(200, "v2_generate_200.json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(format!("/api/v2/guest/receipt/{GENERATED_RECEIPT}")))
+        .respond_with(ResponseTemplate::new(500).set_body_string("down"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let client = Client::builder()
+        .base_url(server.uri())
+        .allow_http(true)
+        .max_retries(0)
+        .build()
+        .unwrap();
+    let generated = client
+        .secrets()
+        .generate(GenerateSecret::new())
+        .await
+        .unwrap();
+    assert!(generated.value.is_none());
+    assert!(!generated.is_claimed());
+    assert_eq!(
+        generated
+            .claim_error
+            .as_ref()
+            .unwrap()
+            .as_api()
+            .unwrap()
+            .status,
+        500
+    );
+    // The creation receipt, which has no links yet.
+    assert_eq!(generated.receipt.shortid, "ig61b2jx");
+    assert!(generated.receipt.share_url.is_none());
+    assert!(generated.share_url.path().ends_with(GENERATED_SECRET));
+}
+
+#[tokio::test]
+async fn opting_out_of_the_claim_makes_one_request() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/v2/guest/secret/generate"))
+        .respond_with(respond(200, "v2_generate_200.json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let generated = anonymous(&server)
+        .secrets()
+        .generate(GenerateSecret::new().claim_value(false))
+        .await
+        .unwrap();
+    assert!(generated.value.is_none());
+    assert!(generated.claim_error.is_none());
+    assert_eq!(generated.receipt.identifier.as_str(), GENERATED_RECEIPT);
+    assert_eq!(server.received_requests().await.unwrap().len(), 1);
 }
 
 #[tokio::test]
@@ -347,10 +462,10 @@ async fn the_first_fetch_of_a_generated_secrets_receipt_carries_the_value() {
     assert_eq!(receipt.state, ReceiptState::New);
     assert_eq!(
         receipt.secret_value.as_ref().unwrap().expose_secret(),
-        "XQ+'Y*9{'$ed"
+        GENERATED_VALUE
     );
     // The value never reaches Debug output.
-    assert!(!format!("{receipt:?}").contains("XQ+'Y*9"));
+    assert!(!format!("{receipt:?}").contains(GENERATED_VALUE));
 
     // A concealed secret's receipt has no value to disclose.
     let receipt = receipts.show(RECEIPT).await.unwrap();

@@ -17,6 +17,11 @@ workflow uses the section as the GitHub release notes.
 - Secrets: `conceal`, `generate`, `show`, `status`, `status_many`,
   `reveal`, `reveal_with_passphrase`.
 - Receipts: `show`, `recent`, `burn`, `burn_with_passphrase`, `update_memo`.
+- `generate` claims the generated value, which the server discloses only
+  on the first fetch of the receipt, and returns it in
+  `GeneratedSecret::value`. A failed claim keeps the created secret and
+  attaches the error. `GenerateSecret::claim_value(false)` opts out;
+  `Receipt::secret_value` then carries the value on that first fetch.
 - System: `status`, `version`, `supported_locales`.
 - Typed `SecretId` and `ReceiptId` that also parse full links.
 - `Error` and `ApiError` with the SDK family's classification

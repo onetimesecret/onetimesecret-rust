@@ -31,8 +31,9 @@ use crate::client::{
 use crate::error::Result;
 use crate::protocol::{self, Request, Response};
 use crate::types::{
-    ConcealSecret, CreatedSecret, GenerateSecret, Receipt, ReceiptId, RevealedSecret, SecretId,
-    SecretMetadata, SecretStatus, SupportedLocales, SystemStatus, SystemVersion,
+    ConcealSecret, CreatedSecret, GenerateSecret, GeneratedSecret, Receipt, ReceiptId,
+    RevealedSecret, SecretId, SecretMetadata, SecretStatus, SupportedLocales, SystemStatus,
+    SystemVersion,
 };
 
 impl ClientBuilder {
@@ -250,9 +251,16 @@ impl Secrets<'_> {
 
     /// See [`crate::Secrets::generate`].
     #[allow(clippy::needless_pass_by_value)] // same signature as the async client
-    pub fn generate(&self, request: GenerateSecret) -> Result<CreatedSecret> {
-        self.client
-            .call(&endpoints::generate(self.client.context(), &request)?)
+    pub fn generate(&self, request: GenerateSecret) -> Result<GeneratedSecret> {
+        let ctx = self.client.context();
+        let created = self.client.call(&endpoints::generate(ctx, &request)?)?;
+        if !request.claim {
+            return Ok(GeneratedSecret::unclaimed(created));
+        }
+        let fetched = self
+            .client
+            .call(&endpoints::show_receipt(ctx, &created.receipt.identifier));
+        Ok(GeneratedSecret::claimed(created, fetched))
     }
 
     /// See [`crate::Secrets::show`].

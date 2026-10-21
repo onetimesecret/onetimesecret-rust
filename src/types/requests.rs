@@ -78,18 +78,45 @@ impl ConcealSecret {
 ///     .length(32)
 ///     .character_sets(CharacterSets::default().symbols(false));
 /// ```
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 #[must_use]
 pub struct GenerateSecret {
     pub(crate) options: CreateOptions,
     pub(crate) length: Option<u32>,
     pub(crate) character_sets: Option<CharacterSets>,
+    pub(crate) claim: bool,
+}
+
+impl Default for GenerateSecret {
+    fn default() -> Self {
+        Self {
+            options: CreateOptions::default(),
+            length: None,
+            character_sets: None,
+            claim: true,
+        }
+    }
 }
 
 impl GenerateSecret {
     /// A request with the server's defaults.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Whether `generate` fetches the receipt right after creation to
+    /// claim the generated value. On by default.
+    ///
+    /// The server discloses the value exactly once, on the first fetch of
+    /// the receipt, and only for a short time after creation (60 seconds
+    /// by default). Pass `false` to make that fetch yourself with
+    /// [`Receipts::show`](crate::Receipts::show); its
+    /// [`Receipt::secret_value`](crate::Receipt::secret_value) then carries
+    /// the value. One request fewer, and the value goes to whoever fetches
+    /// first, so be the first.
+    pub fn claim_value(mut self, claim: bool) -> Self {
+        self.claim = claim;
+        self
     }
 
     /// How long the secret lives before the server destroys it unread.

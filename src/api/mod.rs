@@ -7,8 +7,9 @@ use secrecy::SecretString;
 use crate::client::Client;
 use crate::error::Result;
 use crate::types::{
-    ConcealSecret, CreatedSecret, GenerateSecret, Receipt, ReceiptId, RevealedSecret, SecretId,
-    SecretMetadata, SecretStatus, SupportedLocales, SystemStatus, SystemVersion,
+    ConcealSecret, CreatedSecret, GenerateSecret, GeneratedSecret, Receipt, ReceiptId,
+    RevealedSecret, SecretId, SecretMetadata, SecretStatus, SupportedLocales, SystemStatus,
+    SystemVersion,
 };
 
 /// Operations on secrets. Obtained from [`Client::secrets`].
@@ -29,11 +30,25 @@ impl<'a> Secrets<'a> {
     }
 
     /// Have the server generate a value and get back a one-time link for
-    /// it. The value itself is not returned; it is revealed through the
-    /// link like any other secret.
-    pub async fn generate(&self, request: GenerateSecret) -> Result<CreatedSecret> {
+    /// it, and the value.
+    ///
+    /// The server does not return the value with the link. It discloses
+    /// it exactly once, on the first fetch of the receipt, and only for a
+    /// short time after creation (60 seconds by default). This method
+    /// makes that fetch right away and returns the value in
+    /// [`GeneratedSecret::value`]. If the fetch fails the secret still
+    /// exists and the link still works: the result has `value: None` and
+    /// the failure in [`GeneratedSecret::claim_error`].
+    /// [`GenerateSecret::claim_value`] turns the fetch off.
+    pub async fn generate(&self, request: GenerateSecret) -> Result<GeneratedSecret> {
         let ep = endpoints::generate(self.client.context(), &request)?;
-        self.client.call(ep).await
+        let created = self.client.call(ep).await?;
+        if !request.claim {
+            return Ok(GeneratedSecret::unclaimed(created));
+        }
+        let ep = endpoints::show_receipt(self.client.context(), &created.receipt.identifier);
+        let fetched = self.client.call(ep).await;
+        Ok(GeneratedSecret::claimed(created, fetched))
     }
 
     /// Metadata about a secret, without its value.
@@ -98,7 +113,9 @@ impl<'a> Receipts<'a> {
         Self { client }
     }
 
-    /// A receipt with its links and expiration.
+    /// A receipt with its links and expiration. The first fetch of a
+    /// generated secret's receipt also carries the value; see
+    /// [`Receipt::secret_value`].
     pub async fn show(&self, id: impl Into<ReceiptId>) -> Result<Receipt> {
         let ep = endpoints::show_receipt(self.client.context(), &id.into());
         self.client.call(ep).await
