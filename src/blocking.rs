@@ -25,8 +25,8 @@ use zeroize::Zeroizing;
 
 use crate::api::endpoints::{self, Context, Endpoint};
 use crate::client::{
-    CLIENT_HEADER, ClientBuilder, Config, client_header, http_client_setup_error, retryable_status,
-    retryable_transport_error,
+    CLIENT_HEADER, ClientBuilder, Config, LOOPBACK_ADDRS, client_header, http_client_setup_error,
+    loopback_pin, retryable_status, retryable_transport_error,
 };
 use crate::error::Result;
 use crate::protocol::{self, Request, Response};
@@ -39,14 +39,16 @@ impl ClientBuilder {
     /// Build a blocking client from the same configuration.
     pub fn build_blocking(self) -> Result<Client> {
         let config = self.config()?;
-        let http = reqwest::blocking::Client::builder()
+        let mut http = reqwest::blocking::Client::builder()
             .user_agent(&config.user_agent)
             .timeout(config.timeout)
             .connect_timeout(config.connect_timeout)
             .https_only(config.https_only)
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .map_err(|e| http_client_setup_error(&e))?;
+            .redirect(reqwest::redirect::Policy::none());
+        if let Some(host) = loopback_pin(&config.context.base_url) {
+            http = http.resolve_to_addrs(host, &LOOPBACK_ADDRS);
+        }
+        let http = http.build().map_err(|e| http_client_setup_error(&e))?;
         Ok(Client {
             inner: Arc::new(Inner { config, http }),
         })

@@ -1,6 +1,7 @@
 //! The async client and its configuration.
 
 use std::fmt;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -364,14 +365,16 @@ impl ClientBuilder {
     /// when the HTTP client cannot be set up.
     pub fn build(self) -> Result<Client> {
         let config = self.config()?;
-        let http = reqwest::Client::builder()
+        let mut http = reqwest::Client::builder()
             .user_agent(&config.user_agent)
             .timeout(config.timeout)
             .connect_timeout(config.connect_timeout)
             .https_only(config.https_only)
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .map_err(|e| http_client_setup_error(&e))?;
+            .redirect(reqwest::redirect::Policy::none());
+        if let Some(host) = loopback_pin(&config.context.base_url) {
+            http = http.resolve_to_addrs(host, &LOOPBACK_ADDRS);
+        }
+        let http = http.build().map_err(|e| http_client_setup_error(&e))?;
         Ok(Client {
             inner: Arc::new(Inner { config, http }),
         })
@@ -459,13 +462,35 @@ pub(crate) fn parse_base_url(raw: &str, https_only: bool) -> Result<Url> {
 /// leaves the machine, so plain http is acceptable without opting in.
 fn is_loopback(url: &Url) -> bool {
     match url.host() {
-        Some(url::Host::Domain(domain)) => {
-            let domain = domain.to_ascii_lowercase();
-            domain == "localhost" || domain.ends_with(".localhost")
-        }
+        Some(url::Host::Domain(domain)) => is_loopback_name(domain),
         Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
         Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
         None => false,
+    }
+}
+
+fn is_loopback_name(domain: &str) -> bool {
+    let domain = domain.to_ascii_lowercase();
+    domain == "localhost" || domain.ends_with(".localhost")
+}
+
+/// The addresses a loopback name is pinned to. Port 0 defers to the URL.
+pub(crate) const LOOPBACK_ADDRS: [SocketAddr; 2] = [
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0),
+    SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 0),
+];
+
+/// The host to pin to [`LOOPBACK_ADDRS`], when plain http was allowed on
+/// the strength of a loopback *name*. Names go through the system
+/// resolver, and a hosts file or DNS server could point `localhost` off
+/// the machine; pinning keeps the exemption honest. Literal addresses
+/// and https URLs need no pin.
+pub(crate) fn loopback_pin(url: &Url) -> Option<&str> {
+    match url.host() {
+        Some(url::Host::Domain(domain)) if url.scheme() == "http" && is_loopback_name(domain) => {
+            Some(domain)
+        }
+        _ => None,
     }
 }
 
@@ -639,6 +664,18 @@ mod tests {
         assert!(parse_base_url("http://10.0.0.5", true).is_err());
         assert!(parse_base_url("ftp://x.example", false).is_err());
         assert!(parse_base_url("https://x.example/?a=1", true).is_err());
+    }
+
+    #[test]
+    fn loopback_names_are_pinned_and_addresses_are_not() {
+        let pin = |raw: &str| loopback_pin(&parse_base_url(raw, true).unwrap()).map(str::to_owned);
+        assert_eq!(pin("http://localhost:3000"), Some("localhost".into()));
+        assert_eq!(pin("http://ots.localhost"), Some("ots.localhost".into()));
+        assert_eq!(pin("http://127.0.0.1:7143"), None);
+        assert_eq!(pin("http://[::1]:7143"), None);
+        assert_eq!(pin("https://localhost"), None);
+        assert_eq!(pin("https://eu.onetimesecret.com"), None);
+        assert!(LOOPBACK_ADDRS.iter().all(|a| a.ip().is_loopback()));
     }
 
     #[test]

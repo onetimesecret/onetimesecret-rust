@@ -28,3 +28,11 @@ workflow uses the section as the GitHub release notes.
 - `User-Agent` and `X-Onetime-Client` headers identifying the SDK.
 - Configuration from `ONETIME_BASE_URL`, `ONETIME_CUSTOMER_EXTID` and
   `ONETIME_API_TOKEN`.
+
+### Security
+
+- A plain `http://` base URL is accepted without `allow_http(true)` only
+  for loopback hosts. The names `localhost` and `*.localhost` are pinned
+  to `127.0.0.1` and `::1` in the HTTP client, so a hosts file or
+  resolver that points them elsewhere cannot send plaintext off the
+  machine.

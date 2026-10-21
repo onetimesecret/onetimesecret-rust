@@ -27,9 +27,10 @@ recent `0.x` line.
   zeroized after the request. Copies the HTTP stack makes while sending
   are outside the SDK's control.
 - TLS is required, with one exception: a plain `http://` base URL naming
-  a loopback host (`localhost`, `127.0.0.1`, `::1`) is accepted, since that
-  traffic never leaves the machine. Any other `http://` host needs
-  `allow_http(true)`.
+  a loopback host (`localhost`, `*.localhost`, `127.0.0.1`, `::1`) is
+  accepted, since that traffic never leaves the machine. The names are
+  not trusted to the system resolver: the client pins them to the
+  loopback addresses. Any other `http://` host needs `allow_http(true)`.
 - Redirects are never followed, so credentials cannot be sent to a host
   other than the configured base URL.
 - A base URL with a username or password in it is refused; credentials

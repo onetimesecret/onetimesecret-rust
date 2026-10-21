@@ -464,6 +464,24 @@ async fn transport_failures_are_distinguishable() {
 }
 
 #[tokio::test]
+async fn a_localhost_base_url_needs_no_opt_in_and_reaches_the_loopback_server() {
+    // `localhost` is accepted by name and pinned to the loopback
+    // addresses, so the request lands here regardless of what the system
+    // resolver would have said.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v2/status"))
+        .respond_with(respond(200, "v2_system_status_200.json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let base_url = format!("http://localhost:{}", server.address().port());
+    let client = Client::builder().base_url(base_url).build().unwrap();
+    assert!(client.system().status().await.unwrap().is_nominal());
+}
+
+#[tokio::test]
 async fn a_path_prefix_on_the_base_url_is_kept() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
