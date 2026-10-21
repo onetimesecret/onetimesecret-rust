@@ -502,6 +502,34 @@ async fn a_path_prefix_on_the_base_url_is_kept() {
 }
 
 #[tokio::test]
+async fn version_needs_credentials_and_comes_back_in_parts() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v2/version"))
+        .and(basic_auth("ur1abc23def", "tok"))
+        .respond_with(respond(200, "v2_system_version_200.json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v2/version"))
+        .respond_with(respond(401, "v2_receipt_recent_401.json"))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let version = authenticated(&server).system().version().await.unwrap();
+    assert_eq!(version.version, vec!["0", "26", "5"]);
+    assert_eq!(version.to_dotted(), "0.26.5");
+    assert_eq!(version.locale.as_deref(), Some("en"));
+
+    // There is no guest variant: anonymous clients hit the same path and
+    // get the server's 401.
+    let err = anonymous(&server).system().version().await.unwrap_err();
+    assert!(err.is_unauthorized());
+}
+
+#[tokio::test]
 async fn v3_responses_parse_too() {
     // Not a supported mode, just a canary: the formats are the same shape
     // today, and this fails the day they diverge.
