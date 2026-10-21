@@ -130,5 +130,7 @@ jobs:
         with:
           toolchain: nightly
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo +nightly update -Z minimal-versions
+      # Direct dependencies only: the transitive graph at its oldest does
+      # not build (openssl-sys 0.9.55), and it is not ours to promise.
+      - run: cargo +nightly update -Z direct-minimal-versions
       - run: cargo check --lib --all-features

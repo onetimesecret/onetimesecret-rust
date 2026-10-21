@@ -26,19 +26,20 @@ native-tls = ["reqwest/native-tls"]
 # A synchronous client at `onetimesecret::blocking`.
 blocking = ["reqwest/blocking"]
 
+# Lower bounds are the oldest versions the crate builds with; CI checks them.
 [dependencies]
 reqwest = { version = "0.13", default-features = false, features = ["http2"] }
-secrecy = { version = "0.10", features = ["serde"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-thiserror = "2"
+secrecy = { version = "0.10.2", features = ["serde"] }
+serde = { version = "1.0.220", features = ["derive"] }
+serde_json = "1.0.140"
+thiserror = "2.0.3"
 # reqwest already depends on tokio; `time` is for retry backoff.
-tokio = { version = "1", default-features = false, features = ["time"] }
+tokio = { version = "1.51", default-features = false, features = ["time"] }
 url = { version = "2.5", features = ["serde"] }
-zeroize = "1"
+zeroize = "1.8.1"
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.51", features = ["macros", "rt-multi-thread"] }
 wiremock = "0.6"
 
 [[example]]
