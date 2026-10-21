@@ -196,7 +196,8 @@ async fn status_show_and_reveal_walk_the_lifecycle() {
     // A full link is accepted wherever an id is.
     let link = format!("https://eu.onetimesecret.com/secret/{SECRET}");
     let status = secrets.status(link.as_str()).await.unwrap();
-    assert_eq!(status.secret.state, SecretState::New);
+    assert!(status.is_known());
+    assert_eq!(status.secret.unwrap().state, SecretState::New);
     assert_eq!(status.remaining, Some(Duration::from_secs(563)));
 
     let shown = secrets.show(SecretId::new(SECRET)).await.unwrap();
@@ -211,6 +212,26 @@ async fn status_show_and_reveal_walk_the_lifecycle() {
     assert_eq!(revealed.secret.state, SecretState::Revealed);
     assert!(revealed.secret.is_revealed);
     assert!(!format!("{revealed:?}").contains("safe to ignore"));
+}
+
+#[tokio::test]
+async fn a_secret_the_server_does_not_hold_has_an_unknown_status() {
+    // Gone secrets and unknown identifiers alike: HTTP 200, no record.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v2/secret/doesnotexist1234/status"))
+        .respond_with(respond(200, "v2_secret_status_unknown_200.json"))
+        .mount(&server)
+        .await;
+
+    let status = anonymous(&server)
+        .secrets()
+        .status("doesnotexist1234")
+        .await
+        .unwrap();
+    assert!(!status.is_known());
+    assert!(status.secret.is_none());
+    assert_eq!(status.remaining, None);
 }
 
 #[tokio::test]

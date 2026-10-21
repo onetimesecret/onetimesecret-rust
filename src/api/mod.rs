@@ -47,8 +47,9 @@ impl<'a> Secrets<'a> {
 
     /// A secret's state and remaining lifetime, without touching it.
     ///
-    /// Secrets that are gone (revealed, burned, expired, or never existed)
-    /// come back as a not-found error.
+    /// A secret the server does not hold (revealed, burned, expired, or
+    /// never existed) is not an error: it comes back with
+    /// [`SecretStatus::secret`] set to `None`.
     pub async fn status(&self, id: impl Into<SecretId>) -> Result<SecretStatus> {
         let ep = endpoints::secret_status(self.client.context(), &id.into());
         self.client.call(ep).await

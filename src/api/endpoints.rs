@@ -92,7 +92,10 @@ fn decode_revealed(ctx: &Context, response: &Response) -> Result<RevealedSecret>
 
 fn decode_status(ctx: &Context, response: &Response) -> Result<SecretStatus> {
     let record: SecretStatusRecord = decode_plain(ctx, response)?;
-    Ok(record.into())
+    record.into_status().map_err(|e| Error::Decode {
+        status: response.status,
+        message: e.to_string(),
+    })
 }
 
 // ---- secrets ------------------------------------------------------------

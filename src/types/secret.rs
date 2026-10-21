@@ -54,10 +54,19 @@ pub struct SecretMetadata {
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct SecretStatus {
-    /// The secret.
-    pub secret: SecretMetadata,
+    /// The secret, while the server holds it. `None` when the server does
+    /// not know the identifier: the secret never existed, or it has been
+    /// revealed, burned, or expired. The server does not say which.
+    pub secret: Option<SecretMetadata>,
     /// How long until the secret expires, when the server reports it.
     pub remaining: Option<Duration>,
+}
+
+impl SecretStatus {
+    /// `true` while the server still holds the secret.
+    pub fn is_known(&self) -> bool {
+        self.secret.is_some()
+    }
 }
 
 /// The outcome of a reveal: the value, and the secret as it was.
@@ -91,7 +100,9 @@ pub struct CreatedSecret {
 
 #[derive(Deserialize)]
 pub(crate) struct SecretStatusRecord {
-    pub(crate) record: SecretMetadata,
+    /// Either a full secret record or `{"state": "unknown"}`; see
+    /// [`into_status`](Self::into_status).
+    pub(crate) record: serde_json::Value,
     #[serde(default)]
     pub(crate) details: SecretStatusDetails,
 }
@@ -102,12 +113,21 @@ pub(crate) struct SecretStatusDetails {
     pub(crate) current_expiration: Option<Duration>,
 }
 
-impl From<SecretStatusRecord> for SecretStatus {
-    fn from(r: SecretStatusRecord) -> Self {
-        SecretStatus {
-            secret: r.record,
-            remaining: r.details.current_expiration,
-        }
+impl SecretStatusRecord {
+    /// The server answers `{"record": {"state": "unknown"}}`, with HTTP
+    /// 200, for a secret it does not hold. Anything else is a secret.
+    pub(crate) fn into_status(self) -> Result<SecretStatus, serde_json::Error> {
+        let unknown = self.record.get("identifier").is_none()
+            && self.record.get("state").and_then(serde_json::Value::as_str) == Some("unknown");
+        let secret = if unknown {
+            None
+        } else {
+            Some(serde_json::from_value(self.record)?)
+        };
+        Ok(SecretStatus {
+            secret,
+            remaining: self.details.current_expiration,
+        })
     }
 }
 

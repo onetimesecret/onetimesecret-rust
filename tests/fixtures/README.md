@@ -11,6 +11,11 @@ Two are not raw captures:
 - `v2_supported_locales_200.json` is a captured response with the locale
   list shortened.
 
+`v2_secret_status_unknown_200.json` is what `GET /secret/{id}/status`
+returns, with HTTP 200, for a secret the server does not hold: one that
+never existed, or one already revealed, burned or expired. The server does
+not say which.
+
 `v3_conceal_200.json` is kept for comparison only: the SDK speaks v2, and
 this shows the two formats are the same shape today.
 

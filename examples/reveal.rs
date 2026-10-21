@@ -20,17 +20,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::from_env()?;
     let secrets = client.secrets();
 
-    match secrets.status(&id).await {
-        Ok(status) => println!(
-            "state: {}, time left: {:?}",
-            status.secret.state, status.remaining
-        ),
-        Err(e) if e.is_not_found() => {
-            println!("that secret is gone (revealed, burned, or expired)");
-            return Ok(());
-        }
-        Err(e) => return Err(e.into()),
-    }
+    let status = secrets.status(&id).await?;
+    let Some(secret) = &status.secret else {
+        println!("that secret is gone (revealed, burned, or expired) or never existed");
+        return Ok(());
+    };
+    println!("state: {}, time left: {:?}", secret.state, status.remaining);
 
     let revealed = match passphrase {
         Some(pw) => secrets.reveal_with_passphrase(&id, pw).await?,
