@@ -74,7 +74,7 @@ async fn conceal_anonymously_uses_the_guest_route_and_builds_the_share_link() {
     assert_eq!(created.receipt.state, ReceiptState::New);
     assert_eq!(created.receipt.kind, Some(SecretKind::Conceal));
     assert_eq!(created.receipt.secret_ttl, Duration::from_secs(600));
-    assert!(created.receipt.recipients.is_empty());
+    assert_eq!(created.receipt.recipients, Vec::<String>::new());
     assert!(created.receipt.is_pending());
     assert!(!created.secret.has_passphrase);
     let created_at = created.secret.created.duration_since(UNIX_EPOCH).unwrap();

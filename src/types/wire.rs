@@ -172,7 +172,7 @@ mod tests {
         let p = probe("{}");
         assert!(p.at.is_none());
         assert!(!p.on);
-        assert!(p.to.is_empty());
+        assert_eq!(p.to, Vec::<String>::new());
     }
 
     #[test]
@@ -196,8 +196,8 @@ mod tests {
     fn recipients_in_every_shape() {
         assert_eq!(probe(r#"{"to": ["a@x", "b@x"]}"#).to, vec!["a@x", "b@x"]);
         assert_eq!(probe(r#"{"to": "a@x, b@x"}"#).to, vec!["a@x", "b@x"]);
-        assert!(probe(r#"{"to": ""}"#).to.is_empty());
-        assert!(probe(r#"{"to": null}"#).to.is_empty());
-        assert!(probe(r#"{"to": [""]}"#).to.is_empty());
+        assert_eq!(probe(r#"{"to": ""}"#).to, Vec::<String>::new());
+        assert_eq!(probe(r#"{"to": null}"#).to, Vec::<String>::new());
+        assert_eq!(probe(r#"{"to": [""]}"#).to, Vec::<String>::new());
     }
 }
