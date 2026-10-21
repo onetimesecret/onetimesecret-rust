@@ -239,6 +239,42 @@ async fn a_failed_claim_still_returns_the_created_secret() {
 }
 
 #[tokio::test]
+async fn a_claim_that_fails_to_decode_keeps_the_value_out_of_the_error() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/v2/guest/secret/generate"))
+        .respond_with(respond(200, "v2_generate_200.json"))
+        .mount(&server)
+        .await;
+    // HTTP 200, the value in place, but no receipt record to carry it:
+    // serde's message would quote the string it rejected.
+    Mock::given(method("GET"))
+        .and(path(format!("/api/v2/guest/receipt/{GENERATED_RECEIPT}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "record": GENERATED_VALUE,
+            "details": {"secret_value": GENERATED_VALUE, "show_secret": true}
+        })))
+        .mount(&server)
+        .await;
+
+    let generated = anonymous(&server)
+        .secrets()
+        .generate(GenerateSecret::new())
+        .await
+        .unwrap();
+    assert!(generated.value.is_none());
+    assert_eq!(generated.receipt.shortid, "ig61b2jx");
+    let error = generated.claim_error.as_ref().unwrap();
+    assert!(
+        matches!(error, Error::Decode { status: 200, .. }),
+        "{error:?}"
+    );
+    assert!(!error.to_string().contains(GENERATED_VALUE), "{error}");
+    assert!(!format!("{error:?}").contains(GENERATED_VALUE), "{error:?}");
+    assert!(!format!("{generated:?}").contains(GENERATED_VALUE));
+}
+
+#[tokio::test]
 async fn opting_out_of_the_claim_makes_one_request() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))

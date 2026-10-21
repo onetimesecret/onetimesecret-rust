@@ -42,6 +42,41 @@ impl From<ApiError> for Error {
 }
 
 impl Error {
+    /// The same error with every message from the server or the parser
+    /// replaced by a fixed one, keeping what classifies it: the variant,
+    /// the status, the kind, and the server's request id and
+    /// `Retry-After`.
+    ///
+    /// For errors from a response that may contain a secret: an API error
+    /// echoes the body, and a serde message quotes the input it rejected.
+    pub(crate) fn scrubbed(self) -> Self {
+        const MESSAGE: &str = "the response was not kept; see the error kind and status";
+        match self {
+            Error::Config(_) => Error::Config(MESSAGE.into()),
+            // reqwest's errors never carry the body; the URL was already
+            // stripped when the request was sent.
+            Error::Transport(e) => Error::Transport(e),
+            Error::Api(e) => Error::Api(Box::new(ApiError {
+                status: e.status,
+                kind: e.kind,
+                message: MESSAGE.into(),
+                detail: None,
+                error_type: None,
+                code: None,
+                field: None,
+                error_key: None,
+                entitlement: None,
+                request_id: e.request_id,
+                retry_after: e.retry_after,
+                body: None,
+            })),
+            Error::Decode { status, .. } => Error::Decode {
+                status,
+                message: MESSAGE.into(),
+            },
+        }
+    }
+
     /// The [`ApiError`] inside, if this is an API error.
     pub fn as_api(&self) -> Option<&ApiError> {
         match self {
@@ -252,6 +287,40 @@ impl ApiError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scrubbing_keeps_the_classification_and_drops_the_words() {
+        let api = ApiError {
+            status: 429,
+            kind: ApiErrorKind::RateLimited,
+            message: "slow down, hunter2".into(),
+            detail: Some("hunter2".into()),
+            error_type: Some("LimitExceeded".into()),
+            code: None,
+            field: None,
+            error_key: None,
+            entitlement: None,
+            request_id: Some("req1".into()),
+            retry_after: Some(Duration::from_secs(3)),
+            body: Some(serde_json::json!({"secret_value": "hunter2"})),
+        };
+        let scrubbed = Error::from(api).scrubbed();
+        let api = scrubbed.as_api().unwrap();
+        assert_eq!(api.status, 429);
+        assert!(api.is_rate_limited());
+        assert_eq!(api.request_id.as_deref(), Some("req1"));
+        assert_eq!(api.retry_after, Some(Duration::from_secs(3)));
+        assert!(api.body.is_none());
+        assert!(!format!("{scrubbed:?}").contains("hunter2"));
+        assert!(!scrubbed.to_string().contains("hunter2"));
+
+        let scrubbed = Error::Decode {
+            status: 200,
+            message: "invalid type: string \"hunter2\"".into(),
+        }
+        .scrubbed();
+        assert!(!scrubbed.to_string().contains("hunter2"));
+    }
 
     #[test]
     fn kinds_follow_status() {

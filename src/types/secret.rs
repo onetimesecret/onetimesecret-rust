@@ -140,7 +140,10 @@ pub struct GeneratedSecret {
     /// first, and only within a short window after creation.
     pub value: Option<SecretString>,
     /// Why the claim failed, if it did. The secret exists and the link
-    /// works regardless; only the value is missing.
+    /// works regardless; only the value is missing. The error keeps its
+    /// kind, status, request id and `Retry-After` but not the server's
+    /// or the parser's message, since the response may have carried the
+    /// value.
     pub claim_error: Option<Error>,
 }
 
@@ -168,7 +171,10 @@ impl GeneratedSecret {
                 generated.value = receipt.secret_value.take();
                 generated.receipt = receipt;
             }
-            Err(error) => generated.claim_error = Some(error),
+            // The response may have held the value: an error body is
+            // echoed in an API error, and a decode failure quotes the
+            // input it choked on. Keep only what classifies the failure.
+            Err(error) => generated.claim_error = Some(error.scrubbed()),
         }
         generated
     }
