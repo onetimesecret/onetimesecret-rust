@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/onetimesecret/onetimesecret-rust/security/advisories/new
+    about: Report privately; see SECURITY.md.
+  - name: Questions about the service or your account
+    url: https://docs.onetimesecret.com
+    about: For anything that is not about this SDK.

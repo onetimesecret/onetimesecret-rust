@@ -1,0 +1,90 @@
+name: Release
+
+# Tag-driven release, the pattern used across the Onetime Secret SDKs
+# (onetime-ruby, onetimesecret-py, onetime-js):
+#
+#   git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
+#
+#   verify  -> tag == Cargo.toml version == newest CHANGELOG entry; full checks
+#   publish -> cargo publish via crates.io Trusted Publishing (OIDC); no token stored
+#   github  -> create the GitHub Release with that CHANGELOG section as notes
+#
+# Actions are pinned to commit SHAs so a moved upstream tag cannot replace
+# code able to publish the crate. Dependabot keeps the pins current.
+# Setup and the release checklist are in docs/releasing.md.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  verify:
+    name: Verify tag and run checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1 (stable)
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Tag matches Cargo.toml and CHANGELOG.md
+        run: scripts/check-release.sh "$GITHUB_REF_NAME"
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-features --all-targets -- -D warnings
+      - run: cargo test --all-features
+      - run: cargo publish --dry-run --all-features
+
+  publish:
+    name: Publish to crates.io
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/onetimesecret
+    permissions:
+      contents: read
+      id-token: write # mint the OIDC token crates.io exchanges for a publish token
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1 (stable)
+        with:
+          toolchain: stable
+      - uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
+        id: auth
+      - run: cargo publish --all-features
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+
+  github-release:
+    name: Create the GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Extract this version's changelog section
+        run: scripts/changelog-section.sh "$GITHUB_REF_NAME" | tee release-notes.md
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --verify-tag

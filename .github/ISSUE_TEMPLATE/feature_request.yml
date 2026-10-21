@@ -1,0 +1,16 @@
+name: Feature request
+description: An API operation or client capability the SDK lacks.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you are trying to do
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: How you would like it to look in Rust, if you have an opinion.
+      render: rust
