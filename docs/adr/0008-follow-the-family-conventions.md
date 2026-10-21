@@ -1,6 +1,6 @@
 # 0008. Follow the SDK family's conventions
 
-Status: accepted, 2026-10-21
+Status: accepted, 2026-10-20
 
 ## Context
 
