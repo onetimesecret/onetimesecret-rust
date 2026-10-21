@@ -55,6 +55,10 @@ name = "receipts"
 required-features = ["rustls"]
 
 [[example]]
+name = "roundtrip"
+required-features = ["rustls"]
+
+[[example]]
 name = "blocking"
 required-features = ["rustls", "blocking"]
 
