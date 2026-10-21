@@ -207,6 +207,21 @@ pub(crate) fn retry_after(value: &str) -> Option<Duration> {
     value.trim().parse::<u64>().ok().map(Duration::from_secs)
 }
 
+/// Percent-encode a value so that it occupies exactly one path segment.
+///
+/// Identifiers reach the client as the caller gave them (ADR 0004 keeps
+/// `From<&str>` lenient), so one containing `/`, `..`, `?` or `#` must
+/// not be able to move the request to another path or add a query. The
+/// `url` crate's segment setter encodes those; a scratch URL borrows it.
+#[allow(clippy::missing_panics_doc)] // parses a literal; `https` URLs have segments
+pub(crate) fn path_segment(value: &str) -> String {
+    let mut url = url::Url::parse("https://segment.invalid/").expect("static URL");
+    url.path_segments_mut()
+        .expect("https URLs can be a base")
+        .push(value);
+    url.path()[1..].to_owned()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

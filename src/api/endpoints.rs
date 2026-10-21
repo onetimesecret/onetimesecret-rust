@@ -7,7 +7,7 @@ use serde::Serialize;
 use url::Url;
 
 use crate::error::{Error, Result};
-use crate::protocol::{self, Record, Records, Request, Response};
+use crate::protocol::{self, Record, Records, Request, Response, path_segment};
 use crate::types::requests::CreateBody;
 use crate::types::{
     ConcealSecret, CreatedSecret, CreatedSecretRecord, GenerateSecret, Receipt, ReceiptId,
@@ -129,13 +129,16 @@ pub(crate) fn generate(ctx: &Context, req: &GenerateSecret) -> Result<Endpoint<C
 
 pub(crate) fn show_secret(ctx: &Context, id: &SecretId) -> Endpoint<SecretMetadata> {
     Endpoint::new(
-        Request::get(ctx.route(&format!("secret/{id}"))),
+        Request::get(ctx.route(&format!("secret/{}", path_segment(id.as_str())))),
         decode_record,
     )
 }
 
 pub(crate) fn secret_status(_: &Context, id: &SecretId) -> Endpoint<SecretStatus> {
-    Endpoint::new(Request::get(format!("secret/{id}/status")), decode_status)
+    Endpoint::new(
+        Request::get(format!("secret/{}/status", path_segment(id.as_str()))),
+        decode_status,
+    )
 }
 
 pub(crate) fn secret_status_many(
@@ -180,7 +183,7 @@ pub(crate) fn reveal(
 ) -> Result<Endpoint<RevealedSecret>> {
     Ok(Endpoint::new(
         Request::post(
-            ctx.route(&format!("secret/{id}/reveal")),
+            ctx.route(&format!("secret/{}/reveal", path_segment(id.as_str()))),
             &Confirm { passphrase },
         )?,
         decode_revealed,
@@ -191,7 +194,7 @@ pub(crate) fn reveal(
 
 pub(crate) fn show_receipt(ctx: &Context, id: &ReceiptId) -> Endpoint<Receipt> {
     Endpoint::new(
-        Request::get(ctx.route(&format!("receipt/{id}"))),
+        Request::get(ctx.route(&format!("receipt/{}", path_segment(id.as_str())))),
         decode_record,
     )
 }
@@ -207,7 +210,7 @@ pub(crate) fn burn(
 ) -> Result<Endpoint<Receipt>> {
     Ok(Endpoint::new(
         Request::post(
-            ctx.route(&format!("receipt/{id}/burn")),
+            ctx.route(&format!("receipt/{}/burn", path_segment(id.as_str()))),
             &Confirm { passphrase },
         )?,
         decode_record,
@@ -220,7 +223,10 @@ pub(crate) fn update_memo(_: &Context, id: &ReceiptId, memo: &str) -> Result<End
         memo: &'a str,
     }
     Ok(Endpoint::new(
-        Request::patch(format!("receipt/{id}"), &Body { memo })?,
+        Request::patch(
+            format!("receipt/{}", path_segment(id.as_str())),
+            &Body { memo },
+        )?,
         decode_record,
     ))
 }
@@ -262,6 +268,27 @@ mod tests {
         );
         // Neither do the account-only operations.
         assert_eq!(recent_receipts(&ctx(true)).request.path, "receipt/recent");
+    }
+
+    #[test]
+    fn identifiers_cannot_escape_their_path_segment() {
+        // `From<&str>` is lenient, so these reach the endpoint as given.
+        let id = SecretId::from("../../x");
+        assert_eq!(
+            reveal(&ctx(false), &id, None).unwrap().request.path,
+            "secret/..%2F..%2Fx/reveal"
+        );
+        let id = ReceiptId::from("r?burn=1#frag");
+        assert_eq!(
+            show_receipt(&ctx(false), &id).request.path,
+            "receipt/r%3Fburn=1%23frag"
+        );
+        // Ordinary identifiers are untouched.
+        let id = SecretId::from("lj85fzdd");
+        assert_eq!(
+            secret_status(&ctx(false), &id).request.path,
+            "secret/lj85fzdd/status"
+        );
     }
 
     #[test]
