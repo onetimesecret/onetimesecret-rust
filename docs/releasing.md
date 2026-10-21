@@ -144,7 +144,8 @@ unprotected, on first run; configure it before releasing):
 Version rules, pre-1.0: a breaking change bumps the minor version; an
 addition or fix bumps the patch version. From 1.0, SemVer as usual.
 `cargo-semver-checks` runs on every pull request and refuses an
-undeclared breaking change.
+undeclared breaking change. It compares against the newest version on
+crates.io, so CI skips it until 0.1.0 is published.
 
 ## If something goes wrong
 

@@ -107,7 +107,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: stable
+      # cargo-semver-checks compares the crate against its newest release on
+      # crates.io and fails outright when there is none, so every pull
+      # request would be red until 0.1.0 is published. Ask the registry
+      # whether the crate exists and skip the check until it does.
+      #
+      # The registry, not the newest git tag, is the baseline because it is
+      # what downstream builds resolve against, and the two can disagree:
+      # docs/releasing.md publishes 0.1.0 by hand before tagging it, and a
+      # tag whose publish failed would otherwise be compared against. Once
+      # the crate is published this step always answers 200 and the check
+      # runs unconditionally.
+      #
+      # crates.io's crawler policy requires a User-Agent that identifies the
+      # caller; the default curl one is refused. Any answer other than 200
+      # or 404 fails the job rather than guessing.
+      - name: Is the crate on crates.io yet?
+        id: registry
+        run: |
+          crate="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')"
+          code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --retry 3 --retry-all-errors \
+            --user-agent 'onetimesecret-rust CI (https://github.com/onetimesecret/onetimesecret-rust)' \
+            "https://crates.io/api/v1/crates/$crate")"
+          case "$code" in
+            200) echo "published=true" >>"$GITHUB_OUTPUT" ;;
+            404)
+              echo "published=false" >>"$GITHUB_OUTPUT"
+              echo "::notice::$crate is not on crates.io yet; skipping cargo-semver-checks"
+              ;;
+            *) echo "::error::crates.io answered HTTP $code for $crate"; exit 1 ;;
+          esac
+      - if: steps.registry.outputs.published == 'true'
+        uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
         with:
           feature-group: all-features
 
