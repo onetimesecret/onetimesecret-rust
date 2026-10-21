@@ -99,8 +99,26 @@ identifier at the bottom of the user menu …
 > silently accept invalid credentials and create the secret anonymously
 > instead of returning 401. Current servers return 401.
 
-The [examples](examples/) cover conceal, reveal, receipts, and the blocking
-client. Full reference on [docs.rs](https://docs.rs/onetimesecret).
+Full reference on [docs.rs](https://docs.rs/onetimesecret).
+
+### Examples
+
+The [examples](examples/) read the same environment variables. Without
+credentials they run anonymously; each one creates a real secret, so point
+them at a throwaway account or a local server.
+
+```sh
+export ONETIME_BASE_URL=https://eu.onetimesecret.com
+
+cargo run --example roundtrip                      # conceal, inspect, reveal, confirm it is gone
+cargo run --example conceal -- "the launch codes"  # prints the share link and receipt id
+cargo run --example reveal -- <share link>         # status, then the one-time reveal
+cargo run --example receipts                       # needs credentials: list, or burn with -- <id>
+cargo run --example blocking --features blocking   # conceal without an async runtime
+```
+
+A local server works the same way: `ONETIME_BASE_URL=http://localhost:3000`
+(plain http is accepted for loopback hosts only).
 
 ## Errors
 
