@@ -10,8 +10,8 @@ use crate::error::{Error, Result};
 use crate::protocol::{self, Record, Records, Request, Response, path_segment};
 use crate::types::requests::CreateBody;
 use crate::types::{
-    ConcealSecret, CreatedSecret, CreatedSecretRecord, GenerateSecret, Receipt, ReceiptId,
-    RevealedSecret, RevealedSecretRecord, SecretId, SecretMetadata, SecretStatus,
+    ConcealSecret, CreatedSecret, CreatedSecretRecord, GenerateSecret, Receipt, ReceiptEnvelope,
+    ReceiptId, RevealedSecret, RevealedSecretRecord, SecretId, SecretMetadata, SecretStatus,
     SecretStatusRecord, SupportedLocales, SystemStatus, SystemVersion,
 };
 
@@ -88,6 +88,16 @@ fn decode_revealed(ctx: &Context, response: &Response) -> Result<RevealedSecret>
         value,
         secret: record.secret,
     })
+}
+
+/// `GET /receipt/{id}` puts a generated secret's value in the envelope's
+/// `details`, not in the record. Nothing else does, so only this route
+/// looks there.
+fn decode_receipt(ctx: &Context, response: &Response) -> Result<Receipt> {
+    let envelope: ReceiptEnvelope = decode_plain(ctx, response)?;
+    let mut receipt = envelope.record;
+    receipt.secret_value = envelope.details.secret_value;
+    Ok(receipt)
 }
 
 fn decode_status(ctx: &Context, response: &Response) -> Result<SecretStatus> {
@@ -198,7 +208,7 @@ pub(crate) fn reveal(
 pub(crate) fn show_receipt(ctx: &Context, id: &ReceiptId) -> Endpoint<Receipt> {
     Endpoint::new(
         Request::get(ctx.route(&format!("receipt/{}", path_segment(id.as_str())))),
-        decode_record,
+        decode_receipt,
     )
 }
 

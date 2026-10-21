@@ -15,6 +15,7 @@ pub(crate) mod wire;
 
 pub use ids::{ParseIdError, ReceiptId, SecretId};
 pub use receipt::Receipt;
+pub(crate) use receipt::ReceiptEnvelope;
 pub use requests::{CharacterSets, ConcealSecret, GenerateSecret};
 pub use secret::{CreatedSecret, RevealedSecret, SecretMetadata, SecretStatus};
 pub use state::{ReceiptState, SecretKind, SecretState};

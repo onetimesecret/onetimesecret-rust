@@ -326,6 +326,38 @@ async fn receipts_show_recent_burn_and_memo() {
 }
 
 #[tokio::test]
+async fn the_first_fetch_of_a_generated_secrets_receipt_carries_the_value() {
+    const GENERATED: &str = "5s2kbpsa1zj8ixfiijeo0cnh3axrbnj6888dq5j03hwtccwdt3sxyk55kmato7";
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(format!("/api/v2/guest/receipt/{GENERATED}")))
+        .respond_with(respond(200, "v2_receipt_show_generated_200.json"))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(format!("/api/v2/guest/receipt/{RECEIPT}")))
+        .respond_with(respond(200, "v2_receipt_show_200.json"))
+        .mount(&server)
+        .await;
+
+    let receipts = anonymous(&server);
+    let receipts = receipts.receipts();
+
+    let receipt = receipts.show(GENERATED).await.unwrap();
+    assert_eq!(receipt.state, ReceiptState::New);
+    assert_eq!(
+        receipt.secret_value.as_ref().unwrap().expose_secret(),
+        "XQ+'Y*9{'$ed"
+    );
+    // The value never reaches Debug output.
+    assert!(!format!("{receipt:?}").contains("XQ+'Y*9"));
+
+    // A concealed secret's receipt has no value to disclose.
+    let receipt = receipts.show(RECEIPT).await.unwrap();
+    assert!(receipt.secret_value.is_none());
+}
+
+#[tokio::test]
 async fn a_revealed_receipt_reports_the_secret_as_gone() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

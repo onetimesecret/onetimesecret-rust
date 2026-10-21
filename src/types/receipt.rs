@@ -2,6 +2,7 @@
 
 use std::time::{Duration, SystemTime};
 
+use secrecy::SecretString;
 use serde::Deserialize;
 use url::Url;
 
@@ -10,10 +11,15 @@ use super::{ReceiptId, ReceiptState, SecretId, SecretKind, SecretState};
 
 /// What the creator keeps after making a secret.
 ///
-/// A receipt never contains the secret's value. It reports the secret's
-/// state, can burn the secret, and carries the links the web UI would
-/// show. Receipts returned alongside a freshly created secret omit the
-/// link and expiration fields; fetch the receipt to get them.
+/// A receipt reports the secret's state, can burn the secret, and carries
+/// the links the web UI would show. Receipts returned alongside a freshly
+/// created secret omit the link and expiration fields; fetch the receipt
+/// to get them.
+///
+/// A receipt does not carry the secret's value, with one exception: for a
+/// server-generated secret the value is disclosed once, on the first
+/// fetch of the receipt, in [`secret_value`](Self::secret_value). See
+/// [`Secrets::generate`](crate::Secrets::generate).
 #[derive(Debug, Clone, Deserialize)]
 #[non_exhaustive]
 #[allow(clippy::struct_excessive_bools)] // they mirror the wire format
@@ -116,6 +122,29 @@ pub struct Receipt {
     /// The web UI's burn page. Only on fetched receipts.
     #[serde(default)]
     pub burn_url: Option<Url>,
+    /// A generated secret's value, disclosed by the server exactly once:
+    /// on the first fetch of the receipt, while the secret is still `new`
+    /// and within a short window of its creation (60 seconds by
+    /// default). `None` on every other receipt and every later fetch.
+    #[serde(skip)]
+    pub secret_value: Option<SecretString>,
+}
+
+// ---- wire records -------------------------------------------------------
+
+/// `GET /receipt/{id}`: the record plus the `details` the server adds for
+/// the creator's eyes.
+#[derive(Deserialize)]
+pub(crate) struct ReceiptEnvelope {
+    pub(crate) record: Receipt,
+    #[serde(default)]
+    pub(crate) details: ReceiptDetails,
+}
+
+#[derive(Default, Deserialize)]
+pub(crate) struct ReceiptDetails {
+    #[serde(default)]
+    pub(crate) secret_value: Option<SecretString>,
 }
 
 impl Receipt {

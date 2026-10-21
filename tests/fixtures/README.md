@@ -20,6 +20,15 @@ returns, with HTTP 200, for a secret the server does not hold: one that
 never existed, or one already revealed, burned or expired. The server does
 not say which.
 
+`v2_receipt_show_generated_200.json` is the first `GET /receipt/{id}` after
+an anonymous `generate`, captured on 2026-10-21 from a self-hosted server
+on the main branch of onetimesecret/onetimesecret at 145c1e7c
+(`ONETIME_BASE_URL=http://127.0.0.1:PORT`, so the links say
+`localhost:3000`). Its `details.secret_value` is the generated value,
+which the server discloses on that fetch only; the second fetch of the
+same receipt had `secret_value: null`. The secret is not the one in
+`v2_generate_200.json`, which came from the hosted region.
+
 `v3_conceal_200.json` is kept for comparison only: the SDK speaks v2, and
 this shows the two formats are the same shape today.
 
