@@ -1,0 +1,5 @@
+{
+  "error": "Authentication Required",
+  "message": "[AUTH_HEADER_MISSING] No authorization header",
+  "timestamp": 1792537846
+}

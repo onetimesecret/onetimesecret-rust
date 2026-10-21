@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "locales": [
+    "ar",
+    "bg",
+    "de",
+    "en",
+    "es",
+    "fr_CA",
+    "fr_FR",
+    "ja",
+    "ko",
+    "nl",
+    "pl",
+    "pt_BR",
+    "ru",
+    "sv_SE",
+    "tr",
+    "uk",
+    "vi",
+    "zh"
+  ],
+  "default_locale": "en",
+  "locale": "en"
+}

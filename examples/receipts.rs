@@ -1,0 +1,34 @@
+//! List your recent receipts and burn one. Needs credentials.
+//!
+//! ```sh
+//! export ONETIME_BASE_URL=https://eu.onetimesecret.com
+//! export ONETIME_CUSTOMER_EXTID=ur...
+//! export ONETIME_API_TOKEN=...
+//! cargo run --example receipts            # list
+//! cargo run --example receipts -- <id>    # burn
+//! ```
+
+use onetimesecret::{Client, ReceiptId};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::from_env()?;
+    let receipts = client.receipts();
+
+    if let Some(id) = std::env::args().nth(1) {
+        let burned = receipts.burn(ReceiptId::parse(&id)?).await?;
+        println!("burned {} (state now {})", burned.identifier, burned.state);
+        return Ok(());
+    }
+
+    for receipt in receipts.recent().await? {
+        println!(
+            "{:<10} {:<9} {:<8} {}",
+            receipt.shortid,
+            receipt.state,
+            receipt.kind.as_ref().map_or("?", |k| k.as_str()),
+            receipt.memo.as_deref().unwrap_or("")
+        );
+    }
+    Ok(())
+}
