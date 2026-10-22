@@ -85,8 +85,8 @@ async fn status_is_nominal() {
 async fn supported_locales_are_listed() {
     let Some(client) = live() else { return };
     let locales = client.system().supported_locales().await.unwrap();
-    assert!(!locales.locales.is_empty());
-    assert!(!locales.default_locale.is_empty());
+    assert_ne!(locales.locales, Vec::<String>::new());
+    assert_ne!(locales.default_locale, "");
 }
 
 #[tokio::test]
@@ -96,7 +96,7 @@ async fn version_is_reported_to_an_account() {
         return;
     }
     let version = client.system().version().await.unwrap();
-    assert!(!version.version.is_empty());
+    assert_ne!(version.version, Vec::<String>::new());
 }
 
 #[tokio::test]
