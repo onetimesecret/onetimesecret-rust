@@ -33,6 +33,9 @@ workflow uses the section as the GitHub release notes.
 - `User-Agent` and `X-Onetime-Client` headers identifying the SDK.
 - Configuration from `ONETIME_BASE_URL`, `ONETIME_CUSTOMER_EXTID` and
   `ONETIME_API_TOKEN`.
+- Examples (`roundtrip`, `conceal`, `reveal`, `receipts`, `blocking`)
+  configured from the same variables. A failure prints one line to
+  stderr and exits non-zero.
 
 ### Security
 
