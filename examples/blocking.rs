@@ -7,12 +7,23 @@
 //! cargo run --example blocking --features blocking -- "the launch codes"
 //! ```
 
+use std::process::ExitCode;
 use std::time::Duration;
 
 use onetimesecret::ConcealSecret;
 use onetimesecret::blocking::Client;
 
-fn main() -> Result<(), onetimesecret::Error> {
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run() -> Result<(), onetimesecret::Error> {
     let value = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "hello from the blocking client".to_owned());

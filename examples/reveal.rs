@@ -5,11 +5,23 @@
 //! cargo run --example reveal -- https://eu.onetimesecret.com/secret/<id> [passphrase]
 //! ```
 
+use std::process::ExitCode;
+
 use onetimesecret::secrecy::ExposeSecret;
 use onetimesecret::{Client, SecretId};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    match run().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
     let id: SecretId = args
         .next()

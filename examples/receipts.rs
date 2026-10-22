@@ -8,10 +8,22 @@
 //! cargo run --example receipts -- <id>    # burn
 //! ```
 
+use std::process::ExitCode;
+
 use onetimesecret::{Client, ReceiptId};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    match run().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::from_env()?;
     let receipts = client.receipts();
 

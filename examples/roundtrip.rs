@@ -12,6 +12,7 @@
 //! state is not what it should be. This creates one real secret and
 //! consumes it immediately.
 
+use std::process::ExitCode;
 use std::time::Duration;
 
 use onetimesecret::secrecy::ExposeSecret;
@@ -20,7 +21,17 @@ use onetimesecret::{Client, ConcealSecret, ReceiptState, SecretState};
 const VALUE: &str = "roundtrip example: safe to ignore";
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    match run().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::from_env()?;
     println!(
         "server     : {} ({})",
