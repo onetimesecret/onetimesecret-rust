@@ -115,7 +115,10 @@ async fn conceal_reveal_walks_the_lifecycle() {
     let receipt = client.receipts().show(&receipt_id).await.unwrap();
     assert_eq!(receipt.identifier, receipt_id);
     // A local server must run with HOST set to the address in ONETIME_BASE_URL.
-    assert_eq!(receipt.share_url.as_ref(), Some(&created.share_url));
+    assert_eq!(
+        receipt.share_url.as_ref().map(ToString::to_string),
+        Some(created.share_url.to_string())
+    );
     assert_eq!(receipt.state, ReceiptState::New);
     assert!(receipt.is_pending());
 
