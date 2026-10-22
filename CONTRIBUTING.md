@@ -15,10 +15,30 @@ Rust 1.85 or newer builds the library; the test suite wants a current
 stable toolchain. No server is needed: the integration tests replay
 responses captured from the real API (`tests/fixtures/`).
 
+## Running against a server
+
 To run the examples against a real server, set `ONETIME_BASE_URL` and,
 for account operations, `ONETIME_CUSTOMER_EXTID` and `ONETIME_API_TOKEN`.
 Use a throwaway account or the anonymous guest routes; the examples create
 real secrets.
+
+The live suite in `tests/live.rs` checks the same flows against a real
+server. It is off unless `ONETIME_LIVE=1` is set, so `cargo test` stays
+offline:
+
+```sh
+ONETIME_LIVE=1 cargo test --test live
+ONETIME_LIVE=1 ONETIME_BASE_URL=http://127.0.0.1:7143 cargo test --test live
+```
+
+Without `ONETIME_BASE_URL` it targets `https://eu.onetimesecret.com`, as
+the other SDKs' live suites do. The tests that need an account return
+early unless both credential variables are set.
+
+Against a local server, start it with `HOST` set to the host and port in
+`ONETIME_BASE_URL` (for example `HOST=127.0.0.1:7143`), because the server
+builds the links in receipts from `HOST`, which defaults to
+`localhost:3000`.
 
 ## Before you open a pull request
 

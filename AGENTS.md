@@ -38,7 +38,8 @@ dependency versions, `cargo-deny` and `cargo-semver-checks`.
   or burn.
 - Tests do not touch the network. The integration tests replay captured
   responses from `tests/fixtures/` through wiremock; say where and when a
-  new fixture was captured in `tests/fixtures/README.md`.
+  new fixture was captured in `tests/fixtures/README.md`. The one
+  exception is `tests/live.rs`, which runs only with `ONETIME_LIVE=1`.
 - Clippy runs at `pedantic`; `unsafe_code` is forbidden; public items need
   docs. Format with rustfmt (`rustfmt.toml`).
 - Add a `CHANGELOG.md` line for user-visible changes.
