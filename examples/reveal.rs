@@ -15,7 +15,12 @@ async fn main() -> ExitCode {
     match run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("error: {e}");
+            // A transport failure keeps its reason (connection refused, DNS,
+            // TLS) at the end of the source chain.
+            match std::iter::successors(e.source(), |&c| c.source()).last() {
+                Some(cause) => eprintln!("error: {e} ({cause})"),
+                None => eprintln!("error: {e}"),
+            }
             ExitCode::FAILURE
         }
     }

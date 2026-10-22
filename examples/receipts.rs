@@ -21,7 +21,12 @@ async fn main() -> ExitCode {
                 Some(e) if e.is_unauthorized() => eprintln!(
                     "error: the server rejected ONETIME_CUSTOMER_EXTID and ONETIME_API_TOKEN ({e})"
                 ),
-                _ => eprintln!("error: {e}"),
+                // A transport failure keeps its reason (connection refused,
+                // DNS, TLS) at the end of the source chain.
+                _ => match std::iter::successors(e.source(), |&c| c.source()).last() {
+                    Some(cause) => eprintln!("error: {e} ({cause})"),
+                    None => eprintln!("error: {e}"),
+                },
             }
             ExitCode::FAILURE
         }

@@ -7,6 +7,7 @@
 //! cargo run --example blocking --features blocking -- "the launch codes"
 //! ```
 
+use std::error::Error as _;
 use std::process::ExitCode;
 use std::time::Duration;
 
@@ -17,7 +18,12 @@ fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("error: {e}");
+            // A transport failure keeps its reason (connection refused, DNS,
+            // TLS) at the end of the source chain.
+            match std::iter::successors(e.source(), |&c| c.source()).last() {
+                Some(cause) => eprintln!("error: {e} ({cause})"),
+                None => eprintln!("error: {e}"),
+            }
             ExitCode::FAILURE
         }
     }
