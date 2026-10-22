@@ -17,7 +17,12 @@ async fn main() -> ExitCode {
     match run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("error: {e}");
+            match e.downcast_ref::<onetimesecret::Error>() {
+                Some(e) if e.is_unauthorized() => eprintln!(
+                    "error: the server rejected ONETIME_CUSTOMER_EXTID and ONETIME_API_TOKEN ({e})"
+                ),
+                _ => eprintln!("error: {e}"),
+            }
             ExitCode::FAILURE
         }
     }
@@ -25,6 +30,12 @@ async fn main() -> ExitCode {
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::from_env()?;
+    if !client.is_authenticated() {
+        return Err(
+            "receipts belong to an account: set ONETIME_CUSTOMER_EXTID and ONETIME_API_TOKEN"
+                .into(),
+        );
+    }
     let receipts = client.receipts();
 
     if let Some(id) = std::env::args().nth(1) {
