@@ -33,7 +33,8 @@ ONETIME_LIVE=1 ONETIME_BASE_URL=http://127.0.0.1:7143 cargo test --test live
 
 Without `ONETIME_BASE_URL` it targets `https://eu.onetimesecret.com`, as
 the other SDKs' live suites do. The tests that need an account return
-early unless both credential variables are set.
+early unless both credential variables are set. CI runs the suite against
+that region daily and on manual dispatch, never on a push or pull request.
 
 Against a local server, start it with `HOST` set to the host and port in
 `ONETIME_BASE_URL` (for example `HOST=127.0.0.1:7143`), because the server
